@@ -4,6 +4,7 @@ package interfaz;
 
 import java.awt.Font;
 import java.awt.Image;
+import java.awt.Panel;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
@@ -21,36 +22,37 @@ import javafx.scene.input.MouseDragEvent;
 
 public class Juego extends JFrame implements Runnable{
 	
-	private int puntos, dificultad, poder;
+	private int puntos, dificultad, poder, errores;
 	
 	private JPanel panel1;
-	private Thread hilo;
 	private JLabel pou,fondo,fruta, puntaje;
 	private boolean estadoJuego, frutaPantalla, estadoFruta, poderActivo;
 	private ImageIcon frutaBien, frutaMal, frutaPoder, pouComida, pouPoder;
 	
 	
 	
-	private static final int ANCHO_VENTANA=400;
-	private static final int ALTO_VENTANA=500;
-	
+	private static final int ANCHO_VENTANA=500;
+	private static final int ALTO_VENTANA=550;	
+
 	private static final int FLECHA_DERECHA=39;
 	private static final int FLECHA_IZQUIERDA=37;
-	private static final int FLECHA_ARRIBA=38;
-	private static final int FLECHA_ABAJO=40;
 	
-	Musica fondoMusica, frutaSonido, perderSonido;
+	//private static final int FLECHA_ARRIBA=38;
+	//private static final int FLECHA_ABAJO=40;
+	
+	Sonido fondoMusica, frutaSonido, perderSonido;
 	
 	public Juego(){
 		setSize(ANCHO_VENTANA, ALTO_VENTANA);
 		setResizable(false);
 		setLocationRelativeTo(null);
 		setTitle("Pou Comida");
-		//setUndecorated(true);
+		setUndecorated(true);
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		
-		fondoMusica=new Musica("fondoMusica");
+		fondoMusica=new Sonido("fondoMusica");
 		
+		errores=3;
 		puntos=0;
 		
 		poderActivo=false;
@@ -60,15 +62,13 @@ public class Juego extends JFrame implements Runnable{
 		
 		panel1=new JPanel();	
 		this.add(panel1);
-		
-		Componentes();
-		
 		panel1.setLayout(null);	
+
 		
+		Componentes();	
 	}
 
 	private void Componentes() {
-		
 		Imagenes();
 		Labels();
 		Teclas();
@@ -141,7 +141,7 @@ public class Juego extends JFrame implements Runnable{
 
 	private void Labels() {	
 		pou=new JLabel(pouComida);
-		pou.setBounds(142, ALTO_VENTANA-39-100, 100, 100);
+		pou.setBounds(ANCHO_VENTANA/2-(100/2), ALTO_VENTANA-100, 100, 100);
 		panel1.add(pou);
 		
 		puntaje=new JLabel(" Puntaje: 0");
@@ -155,9 +155,9 @@ public class Juego extends JFrame implements Runnable{
 		panel1.add(fruta);
 		
 		Image imagen=new ImageIcon("img/fondo.jpg").getImage();
-		imagen=imagen.getScaledInstance(ANCHO_VENTANA-16, ALTO_VENTANA-39, Image.SCALE_SMOOTH);		
+		imagen=imagen.getScaledInstance(ANCHO_VENTANA, ALTO_VENTANA, Image.SCALE_SMOOTH);		
 		fondo=new JLabel(new ImageIcon(imagen));
-		fondo.setBounds(0, 0, ANCHO_VENTANA-16, ALTO_VENTANA-39);
+		fondo.setBounds(0, 0, ANCHO_VENTANA, ALTO_VENTANA);
 		panel1.add(fondo);
 		
 	}
@@ -169,8 +169,7 @@ public class Juego extends JFrame implements Runnable{
 			public void mousePressed(MouseEvent e) {
 				if(!estadoJuego) {
 					estadoJuego=true;
-					Thread hilo=new Thread(Juego.this);
-					hilo.start();
+					new Thread(Juego.this).start();
 				}
 			}
 			
@@ -195,17 +194,17 @@ public class Juego extends JFrame implements Runnable{
 		
 		fruta.setVisible(true);
 		
-		while(estadoJuego==true) {			
+		while(estadoJuego==true) {	
 			try {
 				Thread.sleep(18-dificultad);
 			} catch (Exception e) {
-				fin();
+
 			}
 			
 			if(!frutaPantalla) {
 				poderActivo=false;
 				double random=Math.random();
-				int posicion=(int)((ANCHO_VENTANA-46)*Math.random());
+				int posicion=(int)((ANCHO_VENTANA-30)*Math.random());
 				if(random>=0.2) {
 					fruta.setIcon(frutaBien);
 					estadoFruta=true;
@@ -224,7 +223,7 @@ public class Juego extends JFrame implements Runnable{
 			if(frutaPantalla){
 				fruta.setLocation(fruta.getLocation().x,fruta.getLocation().y+5);
 				if(Colision(pou, fruta) && estadoFruta) {
-					frutaSonido=new Musica("fruta");
+					new Sonido("fruta");
 					puntos++;
 					puntaje.setText(" Puntaje: "+puntos);
 					dificultad=puntos/2;
@@ -245,7 +244,17 @@ public class Juego extends JFrame implements Runnable{
 						}
 					}
 				}
-				if(fruta.getLocation().y>ALTO_VENTANA-39 || Colision(pou, fruta)) {
+				if(Colision(pou, fruta)) {
+					frutaPantalla=false;
+					errores=3;
+				}
+				if(fruta.getLocation().y>ALTO_VENTANA) {
+					if(estadoFruta) {
+						errores--;
+						if(errores==0) {
+							fin();
+						}
+					}
 					frutaPantalla=false;
 				}
 			}	
@@ -253,11 +262,14 @@ public class Juego extends JFrame implements Runnable{
 	}
 	
 	private void fin() {
-		perderSonido=new Musica("fin");
+		new Sonido("fin");
 		JOptionPane.showMessageDialog(null, "Se acabó el juego.\nSu puntaje fue de "+puntos+" puntos.");
 		puntos=0;
+		poder=0;
 		dificultad=0;
-		pou.setLocation(142,pou.getLocation().y);
+		errores=3;
+		pou.setIcon(pouComida);
+		pou.setLocation(ANCHO_VENTANA/2-(100/2),pou.getLocation().y);
 		fruta.setLocation(0, -30);
 		puntaje.setText(" Puntaje: 0");
 		estadoJuego=false;
